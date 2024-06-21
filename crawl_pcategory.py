@@ -355,11 +355,13 @@ for pcategory in tqdm(TITLE_LIST):
     driver.get(URL_ADDRESS + URL_PREFIX + pcategory)
 
     while(True):
-        try:
+        # try:
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'html.parser')
+        list_html = soup.select_one("li[data-view-method='LIST'] a")
+        if list_html != None:
             driver.find_element(By.CSS_SELECTOR,"li[data-view-method='LIST'] a").click()
-        except:
-            print(f'error{pcategory}')
-            break
+
         # Selenium && BeautifulSoup
         page_source = driver.page_source
         soup = BeautifulSoup(page_source, 'html.parser')
@@ -391,3 +393,7 @@ for pcategory in tqdm(TITLE_LIST):
             # json.dump(review,f,indent=4, ensure_ascii=False)
             insert_review_db(review)
             break
+        # except:
+        #     with open('error.txt','a') as f:
+        #         f.write(pcategory)
+        #         f.write("\n")
