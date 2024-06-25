@@ -334,7 +334,7 @@ def goToNextPage(cur_page,soup):
 
 options = Options()
 driver = webdriver.Firefox(options=options)
-driver.implicitly_wait(300)
+driver.implicitly_wait(3000)
 
 URL_ADDRESS = "https://prod.danawa.com/"
 URL_PREFIX = "list/?cate="
@@ -344,7 +344,6 @@ input_txt = open("./input.txt","r", encoding="utf-8")
 TITLE_LIST = input_txt.read().splitlines()
 
 for pcategory in tqdm(TITLE_LIST):
-    # print(pcategory)
     content_count = 1
     review_count = 1
     cur_page = 1
@@ -355,45 +354,51 @@ for pcategory in tqdm(TITLE_LIST):
     driver.get(URL_ADDRESS + URL_PREFIX + pcategory)
 
     while(True):
-        # try:
-        page_source = driver.page_source
-        soup = BeautifulSoup(page_source, 'html.parser')
-        list_html = soup.select_one("li[data-view-method='LIST'] a")
-        if list_html != None:
-            driver.find_element(By.CSS_SELECTOR,"li[data-view-method='LIST'] a").click()
+        try:
+            driver.implicitly_wait(3000)
+            page_source = driver.page_source
+            soup = BeautifulSoup(page_source, 'html.parser')
+            list_html = soup.select_one("li[data-view-method='LIST'] a")
+            if list_html != None and cur_page == 1:
+                driver.find_element(By.CSS_SELECTOR,"li[data-view-method='LIST'] a").click()
+                time.sleep(10)
+                driver.implicitly_wait(3000)
 
-        # Selenium && BeautifulSoup
-        page_source = driver.page_source
-        soup = BeautifulSoup(page_source, 'html.parser')
-        # 상품을 list로 저장
-        contents = soup.select("a[name='productName']")
-        # 상품의 URL을 따서 goToDetailPage함수 실행
-        for content in contents:
-            if content_count <= CONTENT_COUNT:
-                # try:      
-                detailURL = content.attrs["href"]
-                review_count = goToDetailPage(detailURL,review_count,product_index)
-                product_index += 1
-                content_count += 1
-                # except:   
-                #     pass
-            else:
-                isdone = True
+            # Selenium && BeautifulSoup
+            page_source = driver.page_source
+            soup = BeautifulSoup(page_source, 'html.parser')
+            # 상품을 list로 저장
+            contents = soup.select("a[name='productName']")
+            # 상품의 URL을 따서 goToDetailPage함수 실행
+            for content in contents:
+                if content_count <= CONTENT_COUNT:
+                    # try:      
+                    detailURL = content.attrs["href"]
+                    review_count = goToDetailPage(detailURL,review_count,product_index)
+                    product_index += 1
+                    content_count += 1
+                    # except:   
+                    #     pass
+                else:
+                    isdone = True
+                    break
+            if isdone == True:
+                # with open(f'./result/{pcategory}/review.json','w',encoding='utf-8') as f:
+                # json.dump(review,f,indent=4, ensure_ascii=False)
+                insert_review_db(review)
                 break
-        if isdone == True:
-            # with open(f'./result/{pcategory}/review.json','w',encoding='utf-8') as f:
-            # json.dump(review,f,indent=4, ensure_ascii=False)
-            insert_review_db(review)
-            break
 
-        # 페이지 넘기는 함수
-        cur_page = goToNextPage(cur_page, soup)
-        if cur_page == None:
-            # with open(f'./result/{pcategory}/review.json','w',encoding='utf-8') as f:
-            # json.dump(review,f,indent=4, ensure_ascii=False)
-            insert_review_db(review)
-            break
-        # except:
-        #     with open('error.txt','a') as f:
-        #         f.write(pcategory)
-        #         f.write("\n")
+            # 페이지 넘기는 함수
+            cur_page = goToNextPage(cur_page, soup)
+            if cur_page == None:
+                # with open(f'./result/{pcategory}/review.json','w',encoding='utf-8') as f:
+                # json.dump(review,f,indent=4, ensure_ascii=False)
+                insert_review_db(review)
+                break
+        except:
+            with open('error.txt','a') as f:
+                cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_DETAIL WHERE PCATEGORY = '{pcategory}';""")
+                cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_INFO WHERE PCATEGORY = '{pcategory}';""")
+                cursor.execute(f"""DELETE FROM TB_DNW_REVIEW_KEYWORD WHERE PCATEGORY = '{pcategory}';""")
+                f.write(pcategory)
+                f.write("\n")
