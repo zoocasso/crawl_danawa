@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 create_date = str(datetime.now()).split(' ')[0].strip()
 
-mydb = pymysql.connect(host="127.0.0.1",
+mydb = pymysql.connect(host="183.111.103.165",
                         user="root",
                         passwd="vision9551",
                         db="kisti_crawl_test",
@@ -61,17 +61,18 @@ def insert_db(product_info,product_spectable,review_keyword):
 
     index_1 = 1
     for key in product_spectable:
-        product_spectable_dict = dict()
-        product_spectable_dict["pcategory"] = checkDictValue_str(product_info,"pcategory")
-        product_spectable_dict["pcode"] = checkDictValue_str(product_info,"Product_key")
-        product_spectable_dict["product_idx"] = index_1
-        product_spectable_dict["create_date"] = create_date
-        product_spectable_dict["title"] = key
-        product_spectable_dict["content"] = checkDictValue_str(product_spectable,key)
-        #print(feature_rating_dict)
-        cursor.execute(f"""INSERT INTO `TB_DNW_PRODUCT_DETAIL` (pcategory,pcode,product_idx,create_date,title,content) VALUES("{product_spectable_dict["pcategory"]}","{product_spectable_dict["pcode"]}",{product_spectable_dict["product_idx"]},"{product_spectable_dict["create_date"]}","{product_spectable_dict["title"]}","{product_spectable_dict["content"].replace("○","O")}")""")
-        mydb.commit()
-        index_1 += 1
+        if key != '':
+            product_spectable_dict = dict()
+            product_spectable_dict["pcategory"] = checkDictValue_str(product_info,"pcategory")
+            product_spectable_dict["pcode"] = checkDictValue_str(product_info,"Product_key")
+            product_spectable_dict["product_idx"] = index_1
+            product_spectable_dict["create_date"] = create_date
+            product_spectable_dict["title"] = key
+            product_spectable_dict["content"] = checkDictValue_str(product_spectable,key)
+            #print(feature_rating_dict)
+            cursor.execute(f"""INSERT INTO `TB_DNW_PRODUCT_DETAIL` (pcategory,pcode,product_idx,create_date,title,content) VALUES("{product_spectable_dict["pcategory"]}","{product_spectable_dict["pcode"]}",{product_spectable_dict["product_idx"]},"{product_spectable_dict["create_date"]}","{product_spectable_dict["title"]}","{product_spectable_dict["content"].replace("○","O")}")""")
+            mydb.commit()
+            index_1 += 1
     
     index_2 = 1
     for key in review_keyword:
@@ -128,7 +129,7 @@ def getEachStarPercent(product_info, soup):
 def getReviewKeyword(review_keyword, soup):
     reviewKeyword_list = soup.select_one("ul.tag_list").select("li")[1:]
     index = 1
-    for reviewKeyword in reviewKeyword_list:
+    for reviewKeyword in reviewKeyword_list:    
         review_keyword[f"ReviewKeyword_{index}"] = reviewKeyword.get_text().strip()
         index += 1
 
@@ -397,8 +398,8 @@ for pcategory in tqdm(TITLE_LIST):
                 break
         except:
             with open('error.txt','a') as f:
-                cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_DETAIL WHERE PCATEGORY = '{pcategory}';""")
-                cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_INFO WHERE PCATEGORY = '{pcategory}';""")
-                cursor.execute(f"""DELETE FROM TB_DNW_REVIEW_KEYWORD WHERE PCATEGORY = '{pcategory}';""")
+                # cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_DETAIL WHERE PCATEGORY = '{pcategory}';""")
+                # cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_INFO WHERE PCATEGORY = '{pcategory}';""")
+                # cursor.execute(f"""DELETE FROM TB_DNW_REVIEW_KEYWORD WHERE PCATEGORY = '{pcategory}';""")
                 f.write(pcategory)
                 f.write("\n")
