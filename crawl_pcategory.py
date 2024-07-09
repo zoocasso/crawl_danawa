@@ -14,7 +14,7 @@ from tqdm import tqdm
 create_date = str(datetime.now()).split(' ')[0].strip()
 
 mydb = pymysql.connect(host="183.111.103.165",
-                        user="root",
+                        user="vision",
                         passwd="vision9551",
                         db="kisti_crawl_test",
                         charset='utf8')
@@ -283,33 +283,19 @@ def goToDetailPage(detailURL,review_count,product_index):
     except:
         pass
     try:
-        # ReviewText
-        review_page = 1
-        if review_count < REVIEW_COUNT:
-            review_count = getRivewList(pcategory, pcode, review_page, review_count, review)
-    except:
-        pass
-    try:
         # SpecTable
         getSpecTable(product_spectable, soup)
     except:
         pass
+    # try:
+    #     # ReviewText
+    #     review_page = 1
+    #     if review_count < REVIEW_COUNT:
+    #         review_count = getRivewList(pcategory, pcode, review_page, review_count, review)
+    # except:
+    #     pass
     
 
-    # #########크롤링한 결과물을 json으로 저장
-    # createFolder(f'./result/{pcategory}/index{str(content_count).zfill(3)}_{script_json["sku"]}')
-    
-    # with open(f'./result/{pcategory}/index{str(content_count).zfill(3)}_{script_json["sku"]}/product_info.json','w',encoding='utf-8') as f:
-    #     json.dump(product_info,f,indent=4, ensure_ascii=False)
-    # # print(product_info)
-
-    # with open(f'./result/{pcategory}/index{str(content_count).zfill(3)}_{script_json["sku"]}/product_spectable.json','w',encoding='utf-8') as f:
-    #     json.dump(product_spectable,f,indent=4, ensure_ascii=False)
-    # # print(product_spectable)
-
-    # with open(f'./result/{pcategory}/index{str(content_count).zfill(3)}_{script_json["sku"]}/review_keyword.json','w',encoding='utf-8') as f:
-    #     json.dump(review_keyword,f,indent=4, ensure_ascii=False)
-    # # print(review_keyword)
     insert_db(product_info,product_spectable,review_keyword)
     return review_count
 
@@ -321,21 +307,16 @@ def goToNextPage(cur_page,soup):
         if isNextPage > cur_page:
             cur_page = isNextPage
             driver.get(URL_ADDRESS + URL_PREFIX + pcategory)
-            driver.execute_script("movePage(%s)" % cur_page)
+            driver.execute_script(f"movePage({cur_page})")
+            driver.implicitly_wait(300)
+            time.sleep(5)
             return cur_page
         else:
             continue
-    # pageElement = soup.select_one("a.edge_nav.nav_next")
-    # isNextPage = pageElement.get_text()
-    # if isNextPage == "다음 페이지":
-    #     cur_page += 1
-    #     driver.get(URL_ADDRESS + URL_PREFIX + pcategory)
-    #     driver.execute_script("movePage(%s)" % cur_page)
-    #     return cur_page
 
 options = Options()
 driver = webdriver.Firefox(options=options)
-driver.implicitly_wait(3000)
+driver.implicitly_wait(300)
 
 URL_ADDRESS = "https://prod.danawa.com/"
 URL_PREFIX = "list/?cate="
@@ -354,17 +335,17 @@ for pcategory in tqdm(TITLE_LIST):
 
     driver.get(URL_ADDRESS + URL_PREFIX + pcategory)
 
+    driver.implicitly_wait(300)
+    time.sleep(1)
+    page_source = driver.page_source
+    soup = BeautifulSoup(page_source, 'html.parser')
+    list_html = soup.select_one("li[data-view-method='LIST'] a")
+    driver.find_element(By.CSS_SELECTOR,"li[data-view-method='LIST'] a").click()
+    driver.implicitly_wait(300)
+    time.sleep(5)
+
     while(True):
         try:
-            driver.implicitly_wait(3000)
-            page_source = driver.page_source
-            soup = BeautifulSoup(page_source, 'html.parser')
-            list_html = soup.select_one("li[data-view-method='LIST'] a")
-            if list_html != None and cur_page == 1:
-                driver.find_element(By.CSS_SELECTOR,"li[data-view-method='LIST'] a").click()
-                time.sleep(10)
-                driver.implicitly_wait(3000)
-
             # Selenium && BeautifulSoup
             page_source = driver.page_source
             soup = BeautifulSoup(page_source, 'html.parser')
@@ -373,33 +354,26 @@ for pcategory in tqdm(TITLE_LIST):
             # 상품의 URL을 따서 goToDetailPage함수 실행
             for content in contents:
                 if content_count <= CONTENT_COUNT:
-                    # try:      
-                    detailURL = content.attrs["href"]
-                    review_count = goToDetailPage(detailURL,review_count,product_index)
-                    product_index += 1
-                    content_count += 1
-                    # except:   
-                    #     pass
+                    try:      
+                        detailURL = content.attrs["href"]
+                        review_count = goToDetailPage(detailURL,review_count,product_index)
+                        product_index += 1
+                        content_count += 1
+                    except:   
+                        pass
                 else:
                     isdone = True
                     break
             if isdone == True:
-                # with open(f'./result/{pcategory}/review.json','w',encoding='utf-8') as f:
-                # json.dump(review,f,indent=4, ensure_ascii=False)
                 insert_review_db(review)
                 break
 
             # 페이지 넘기는 함수
             cur_page = goToNextPage(cur_page, soup)
             if cur_page == None:
-                # with open(f'./result/{pcategory}/review.json','w',encoding='utf-8') as f:
-                # json.dump(review,f,indent=4, ensure_ascii=False)
                 insert_review_db(review)
                 break
         except:
             with open('error.txt','a') as f:
-                # cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_DETAIL WHERE PCATEGORY = '{pcategory}';""")
-                # cursor.execute(f"""DELETE FROM TB_DNW_PRODUCT_INFO WHERE PCATEGORY = '{pcategory}';""")
-                # cursor.execute(f"""DELETE FROM TB_DNW_REVIEW_KEYWORD WHERE PCATEGORY = '{pcategory}';""")
                 f.write(pcategory)
                 f.write("\n")
