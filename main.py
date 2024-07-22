@@ -9,20 +9,19 @@ import json
 import os
 import re
 import math
-from tqdm import tqdm
 import pandas as pd
 
 create_date = str(datetime.now()).split(' ')[0].strip()
 
-mydb = pymysql.connect(host="127.0.0.1",
-                        user="root",
+mydb = pymysql.connect(host="183.111.103.165",
+                        user="vision",
                         passwd="vision9551",
                         db="kisti_crawl_test",
                         charset='utf8')
 cursor = mydb.cursor()
 
 from sqlalchemy import create_engine
-db_connection_str = 'mysql+pymysql://root:vision9551@127.0.0.1/kisti_crawl_test'
+db_connection_str = 'mysql+pymysql://vision:vision9551@183.111.103.165/kisti_crawl_test'
 db_connection = create_engine(db_connection_str)
 conn = db_connection.connect()
 
@@ -32,7 +31,7 @@ def insert_db(product_info,product_spectable,review_keyword):
     product_info["CREATE_DATE"] = create_date
     product_info_list.append(product_info)
     product_info_df = pd.DataFrame(product_info_list)
-    product_info_df.to_sql(name='TB_DNW_PRODUCT_INFO',con=db_connection, if_exists='append', index=False)
+    product_info_df.to_sql(name='tb_dnw_product_info',con=db_connection, if_exists='append', index=False)
 
     index_1 = 1
     product_spectable_list = list()
@@ -48,7 +47,7 @@ def insert_db(product_info,product_spectable,review_keyword):
             product_spectable_list.append(product_spectable_dict)
             index_1 += 1
     product_spectable_df= pd.DataFrame(product_spectable_list)
-    product_spectable_df.to_sql(name='TB_DNW_PRODUCT_DETAIL',con=db_connection, if_exists='append', index=False)
+    product_spectable_df.to_sql(name='tb_dnw_product_detail',con=db_connection, if_exists='append', index=False)
 
     index_2 = 1
     review_keyword_list = list()
@@ -62,7 +61,7 @@ def insert_db(product_info,product_spectable,review_keyword):
         review_keyword_list.append(review_keyword_dict)
         index_2 += 1
     review_keyword_df= pd.DataFrame(review_keyword_list)
-    review_keyword_df.to_sql(name='TB_DNW_REVIEW_KEYWORD',con=db_connection, if_exists='append', index=False)
+    review_keyword_df.to_sql(name='tb_dnw_review_keyword',con=db_connection, if_exists='append', index=False)
 
 def insert_review_db(review):
     index_3 = 1
@@ -73,7 +72,7 @@ def insert_review_db(review):
         review_dict["PCODE"] = review[i]["PCODE"]
         review_dict["PRODUCT_IDX"] = index_3
         review_dict["CREATE_DATE"] = create_date
-        review_dict["RATING"] = review[i]["Rating"]
+        review_dict["RATING"] = math.floor(int(re.sub('[가-힣]','',review[i]["Rating"]))/20)
         review_dict["DATE"] = review[i]["Date"]
         review_dict["MALL"] = review[i]["Mall"]
         review_dict["TITLE"] = review[i]["Title"]
@@ -81,7 +80,7 @@ def insert_review_db(review):
         index_3 += 1
         review_list.append(review_dict)
     review_df= pd.DataFrame(review_list)
-    review_df.to_sql(name='TB_DNW_REVIEW',con=db_connection, if_exists='append', index=False)
+    review_df.to_sql(name='tb_dnw_review',con=db_connection, if_exists='append', index=False)
 
 
 # EachStarPercent
@@ -256,8 +255,10 @@ def goToDetailPage(detailURL,review_count,product_index):
     except:
         pass
     
-
-    insert_db(product_info,product_spectable,review_keyword)
+    try:
+        insert_db(product_info,product_spectable,review_keyword)
+    except:
+        pass
     return review_count
 
 # 다음 페이지로 넘기는 함수
@@ -281,12 +282,12 @@ driver.implicitly_wait(300)
 
 URL_ADDRESS = "https://prod.danawa.com/"
 URL_PREFIX = "list/?cate="
-CONTENT_COUNT = 3
-REVIEW_COUNT = 2
+CONTENT_COUNT = 300
+REVIEW_COUNT = 20000
 input_txt = open("./input.txt","r", encoding="utf-8")
 TITLE_LIST = input_txt.read().splitlines()
 
-for pcategory in tqdm(TITLE_LIST):
+for pcategory in TITLE_LIST:
     content_count = 1
     review_count = 1
     cur_page = 1
@@ -315,13 +316,10 @@ for pcategory in tqdm(TITLE_LIST):
         # 상품의 URL을 따서 goToDetailPage함수 실행
         for content in contents:
             if content_count <= CONTENT_COUNT:
-                # try:      
                 detailURL = content.attrs["href"]
                 review_count = goToDetailPage(detailURL,review_count,product_index)
                 product_index += 1
                 content_count += 1
-                # except:   
-                #     pass
             else:
                 isdone = True
                 break
